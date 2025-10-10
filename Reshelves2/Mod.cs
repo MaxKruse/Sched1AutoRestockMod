@@ -11,8 +11,6 @@ namespace Reshelves2
 {
     public class Reshelves2Mod : MelonMod
     {
-        public Dictionary<ItemSlot, NPC> shelfAccessors;
-        private bool needsReset = false;
         public MelonPreferences_Category melonPrefs;
         public HarmonyLib.Harmony harmony = new HarmonyLib.Harmony("com.lasersquid.reshelves2");
 
@@ -20,13 +18,13 @@ namespace Reshelves2
         {
             CreateMelonPreferences();
             SetMod();
+            Utils.Mod = this;
             LoggerInstance.Msg("Mod initialized.");
         }
 
         private void ResetState()
         {
             RestoreDefaults();
-            needsReset = false;
         }
 
         private void CreateMelonPreferences()
@@ -114,7 +112,7 @@ namespace Reshelves2
 //  - make icon
 //  - write readme
 //  - any transactions mid-completion during save should be stored in MelonPreferences - done
-//  - deserialize transactions and complete on load
-//  - initialize manager after all objects in the scene are initialized. on player spawn maybe?
+//  - deserialize transactions and complete on load - done
+//  - initialize manager after all objects in the scene are initialized - done
 //  - convert for mono release
-//  - don't initialize/silence warnings for non-host multiplayer
+//  - don't initialize/silence warnings for non-host multiplayer - needs testing

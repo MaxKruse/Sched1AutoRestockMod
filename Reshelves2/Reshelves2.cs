@@ -9,6 +9,12 @@ using Il2CppScheduleOne.UI.Phone.Delivery;
 using System.Linq.Expressions;
 using Il2CppScheduleOne.Tiles;
 using Il2CppScheduleOne.Property;
+using Il2CppScheduleOne.PlayerScripts;
+using Il2CppScheduleOne;
+using Il2CppScheduleOne.UI;
+
+
+
 
 
 
@@ -59,16 +65,6 @@ namespace Reshelves2
         protected static Reshelves2Mod Mod;
 
 
-        public static void Log(string message)
-        {
-            Mod.LoggerInstance.Msg(message);
-        }
-
-        public static void Warn(string message)
-        {
-            Mod.LoggerInstance.Warning(message);
-        }
-
 
         public static void SetMod(Reshelves2Mod mod)
         {
@@ -81,26 +77,38 @@ namespace Reshelves2
         }
     }
 
-    public class Utils
+    public static class Utils
     {
+        public static Reshelves2Mod Mod;
         public static void PrintException(Exception e)
         {
-            MelonLogger.Warning($"Exception: {e.GetType().Name} - {e.Message}");
-            MelonLogger.Warning($"Source: {e.Source}");
-            MelonLogger.Warning($"{e.StackTrace}");
+            Utils.Warn($"Exception: {e.GetType().Name} - {e.Message}");
+            Utils.Warn($"Source: {e.Source}");
+            Utils.Warn($"{e.StackTrace}");
             if (e.InnerException != null)
             {
-                MelonLogger.Warning($"Inner exception: {e.InnerException.GetType().Name} - {e.InnerException.Message}");
-                MelonLogger.Warning($"Source: {e.InnerException.Source}");
-                MelonLogger.Warning($"{e.InnerException.StackTrace}");
+                Utils.Warn($"Inner exception: {e.InnerException.GetType().Name} - {e.InnerException.Message}");
+                Utils.Warn($"Source: {e.InnerException.Source}");
+                Utils.Warn($"{e.InnerException.StackTrace}");
                 if (e.InnerException.InnerException != null)
                 {
-                    MelonLogger.Warning($"Inner inner exception: {e.InnerException.InnerException.GetType().Name} - {e.InnerException.InnerException.Message}");
-                    MelonLogger.Warning($"Source: {e.InnerException.InnerException.Source}");
-                    MelonLogger.Warning($"{e.InnerException.InnerException.StackTrace}");
+                    Utils.Warn($"Inner inner exception: {e.InnerException.InnerException.GetType().Name} - {e.InnerException.InnerException.Message}");
+                    Utils.Warn($"Source: {e.InnerException.InnerException.Source}");
+                    Utils.Warn($"{e.InnerException.InnerException.StackTrace}");
                 }
             }
         }
+
+        public static void Log(string message)
+        {
+            Mod.LoggerInstance.Msg(message);
+        }
+
+        public static void Warn(string message)
+        {
+            Mod.LoggerInstance.Warning(message);
+        }
+
         public static object GetField(Type type, string fieldName, object target)
         {
 #if MONO_BUILD
@@ -312,8 +320,9 @@ namespace Reshelves2
                 this.type = type;
             }
         }
-
-        private static MelonPreferences_Category melonPrefs;
+        
+        public static Dictionary<ItemSlot, NPC> shelfAccessors;
+        public static MelonPreferences_Category melonPrefs;
         private static TimeManager timeManager;
         private static MoneyManager moneyManager;
         private static SaveManager saveManager;
@@ -325,7 +334,6 @@ namespace Reshelves2
         private static EDay ledgerDay;
         private static Mutex exclusiveLock;
         public static bool isInitialized = false;
-
 
         public static SlotIdentifier SerializeSlot(ItemSlot slot)
         {
@@ -346,11 +354,11 @@ namespace Reshelves2
             }
             else
             {
-                MelonLogger.Warning($"Couldn't serialize itemslot!");
+                Utils.Warn($"Couldn't serialize itemslot!");
                 return null;
             }
 
-            string property = gridItem.GetProperty().name;
+            string property = gridItem.ParentProperty.name;
 
             return new SlotIdentifier(property, gridItem.OriginCoordinate, slot.SlotIndex, type);
         }
@@ -404,7 +412,7 @@ namespace Reshelves2
                     ItemSlot slot = DeserializeSlot(transaction.slotID);
                     if (slot == null)
                     {
-                        MelonLogger.Warning($"Couldn't deserialize slot!");
+                        Utils.Warn($"Couldn't deserialize slot!");
                         continue;
                     }
                     StorableItemInstance item = Utils.GetItem(transaction.itemID);
@@ -419,6 +427,11 @@ namespace Reshelves2
 
         public static void Initialize()
         {
+            if (!InstanceFinder.IsServer)
+            {
+                return;
+            }
+
             melonPrefs = MelonPreferences.GetCategory("Reshelves2");
             timeManager = NetworkSingleton<TimeManager>.Instance;
             moneyManager = NetworkSingleton<MoneyManager>.Instance;
@@ -426,6 +439,7 @@ namespace Reshelves2
 
             ledgerDay = timeManager.CurrentDay;
 
+            shelfAccessors = new Dictionary<ItemSlot, NPC>();
             coroutines = new Dictionary<Transaction, object>();
 
             lockOwner = UnityEngine.Object.FindObjectsOfType<NPC>().FirstOrDefault((NPC npc) => npc.ID == "oscar_holland");
@@ -439,22 +453,22 @@ namespace Reshelves2
 
             if (!melonPrefs.HasEntry(ledgerString))
             {
-                MelonPreferences.GetCategory("Reshelves2").CreateEntry<string>(ledgerString, "[]", "", true);
+                melonPrefs.CreateEntry<string>(ledgerString, "[]", "", true);
             }
             if (!melonPrefs.HasEntry(transactionString))
             {
-                MelonPreferences.GetCategory("Reshelves2").CreateEntry<string>(transactionString, "[]", "", true);
+                melonPrefs.CreateEntry<string>(transactionString, "[]", "", true);
             }
-            MelonPreferences.GetCategory("Reshelves2").LoadFromFile(false);
-            ledger = JsonConvert.DeserializeObject<List<Transaction>>(MelonPreferences.GetCategory("Reshelves2").GetEntry<string>(ledgerString).Value);
-            List<Transaction> pendingTransactions = JsonConvert.DeserializeObject<List<Transaction>>(MelonPreferences.GetCategory("Reshelves2").GetEntry<string>(transactionString).Value);
+            melonPrefs.LoadFromFile(false);
+            ledger = JsonConvert.DeserializeObject<List<Transaction>>(melonPrefs.GetEntry<string>(ledgerString).Value);
+            List<Transaction> pendingTransactions = JsonConvert.DeserializeObject<List<Transaction>>(melonPrefs.GetEntry<string>(transactionString).Value);
             
             isInitialized = true;
-            MelonLogger.Msg($"Reshelves2 manager initialized.");
+            Utils.Log($"Reshelves2 manager initialized.");
 
             if (pendingTransactions.Count > 0)
             {
-                MelonLogger.Msg($"Completing {pendingTransactions.Count} pending transaction{(pendingTransactions.Count > 1 ? "s" : "")}.");
+                Utils.Log($"Completing {pendingTransactions.Count} pending transaction{(pendingTransactions.Count > 1 ? "s" : "")}.");
                 CompleteTransactions(pendingTransactions);
             }
         }
@@ -518,29 +532,11 @@ namespace Reshelves2
             if (isInitialized)
             {
                 string itemID = item.ID;
-                float discount = Mathf.Clamp(MelonPreferences.GetCategory("Reshelves2").GetEntry<float>("itemDiscount").Value, 0f, 1f);
+                float discount = Mathf.Clamp(melonPrefs.GetEntry<float>("itemDiscount").Value, 0f, 1f);
                 float unitPrice = item.GetMonetaryValue() / (float)item.Quantity;
                 float totalCost = unitPrice * quantity * (1f - discount);
-                string property;
-
-                if (Utils.IsObjectBuildableItem(slot.SlotOwner.Pointer))
-                {
-                    // buildableitem doesn't implement IItemSlotOwner? just trust me bro
-                    BuildableItem slotOwnerBuildable = new BuildableItem(slot.SlotOwner.Pointer);
-                    property = slotOwnerBuildable.ParentProperty.name;
-                }
-                else if (Utils.IsObjectStorageRack(slot.SlotOwner.Pointer))
-                {
-                    StorageEntity slotOwnerStorage = new StorageEntity(slot.SlotOwner.Pointer);
-                    PlaceableStorageEntity slotOwnerPlaceable = new PlaceableStorageEntity(slotOwnerStorage.gameObject.GetComponent("PlaceableStorageEntity").Pointer);
-                    property = slotOwnerPlaceable.GetProperty().name;
-                }
-                else
-                {
-                    property = "Outside";
-                }
-                bool useCash = MelonPreferences.GetCategory("Reshelves2").GetEntry<bool>("payWithCash").Value;
-                bool useDebt = MelonPreferences.GetCategory("Reshelves2").GetEntry<bool>("useDebt").Value;
+                bool useCash = melonPrefs.GetEntry<bool>("payWithCash").Value;
+                bool useDebt = melonPrefs.GetEntry<bool>("useDebt").Value;
                 SlotIdentifier slotID = SerializeSlot(slot);
                 
                 try
@@ -556,7 +552,7 @@ namespace Reshelves2
                         float balance = useCash ? moneyManager.cashBalance : moneyManager.onlineBalance;
                         if (balance < totalCost && !useDebt)
                         {
-                            MelonLogger.Msg($"Can't afford to restock {quantity}x {itemID} (${totalCost}).");
+                            Utils.Log($"Can't afford to restock {quantity}x {itemID} (${totalCost}).");
                         }
                         else if (balance >= totalCost)
                         {
@@ -576,7 +572,7 @@ namespace Reshelves2
             }
             else
             {
-                MelonLogger.Msg($"Tried to restock item, but Manager was not initialized!");
+                Utils.Log($"Tried to restock item, but Manager was not initialized!");
             }
         }
 
@@ -616,10 +612,10 @@ namespace Reshelves2
             slot.SetIsRemovalLocked(true);
             yield return new WaitForSeconds(2f);
 
-            bool isVerbose = MelonPreferences.GetCategory("Reshelves2").GetEntry<bool>("verboseLogs").Value;
+            bool isVerbose = melonPrefs.GetEntry<bool>("verboseLogs").Value;
             if (isVerbose)
             {
-                MelonLogger.Msg($"Restocking {item.Name} (${transaction.unitPrice}) x{transaction.quantity} at {transaction.slotID.property}. Total: ${transaction.totalCost}.");
+                Utils.Log($"Restocking {item.Name} (${transaction.unitPrice}) x{transaction.quantity} at {transaction.slotID.property}. Total: ${transaction.totalCost}.");
             }
             if (transaction.quantity > 0)
             {
@@ -630,11 +626,11 @@ namespace Reshelves2
 
             if (transaction.totalCost <= 0f && isVerbose)
             {
-                MelonLogger.Msg($"Total cost of transaction is $0. Get a freebie!");
+                Utils.Log($"Total cost of transaction is $0. Get a freebie!");
             }
             else
             {
-                if (MelonPreferences.GetCategory("Reshelves2").GetEntry<bool>("payWithCash").Value)
+                if (melonPrefs.GetEntry<bool>("payWithCash").Value)
                 {
                     moneyManager.ChangeCashBalance(-transaction.totalCost);
                 }
@@ -774,20 +770,34 @@ namespace Reshelves2
     [HarmonyPatch]
     public class PersistencePatches: Sched1PatchesBase
     {
-        // this is too early; not all griditems have loaded yet.
-        // maybe hook player spawn?
-        [HarmonyPatch(typeof(LoadManager), "Start")]
+        // LoadManager.Start is too early.
+        // Player.Activate just doesn't fire at all
+        // maybe playercamera.setcanlook? nope, not called either
+        // playercamera.lockmouse? nope
+        // gameinput.start? nope
+        // loadingscreen.close?
+
+
+        [HarmonyPatch(typeof(LoadingScreen), "Close")]
         [HarmonyPostfix]
-        public static void StartPostfix(LoadManager __instance)
+        public static void ClosePostfix(LoadingScreen __instance)
         {
-            Manager.Initialize();
+            if (InstanceFinder.IsServer && !Manager.isInitialized)
+            {
+                Manager.Initialize();
+            }
         }
+
+
 
         [HarmonyPatch(typeof(LoadManager), "ExitToMenu")]
         [HarmonyPrefix]
         public static void ExitToMenuPrefix(LoadManager __instance)
         {
-            Manager.Stop();
+            if (InstanceFinder.IsServer)
+            {
+                Manager.Stop();
+            }
         }
     }
 
@@ -798,13 +808,18 @@ namespace Reshelves2
         [HarmonyPrefix]
         public static bool RemoveIngredientsPrefix(Cauldron __instance)
         {
+            if (!InstanceFinder.IsServer)
+            {
+                return true;
+            }
+
             try
             {
                 if (!Manager.isInitialized)
                 {
                     return true;
                 }
-                if (!MelonPreferences.GetCategory("Reshelves2").GetEntry<bool>("enableCauldrons").Value)
+                if (!Manager.melonPrefs.GetEntry<bool>("enableCauldrons").Value)
                 {
                     return true;
                 }
@@ -812,7 +827,7 @@ namespace Reshelves2
                 {
                     return true;
                 }
-                if (MelonPreferences.GetCategory("Reshelves2").GetEntry<bool>("playerRestockStations").Value ||
+                if (Manager.melonPrefs.GetEntry<bool>("playerRestockStations").Value ||
                     __instance.PlayerUserObject == null)
                 {
                     StorableItemInstance newItem = Utils.CastTo<StorableItemInstance>(__instance.LiquidSlot.ItemInstance.GetCopy(1));
@@ -821,7 +836,7 @@ namespace Reshelves2
             }
             catch (Exception e)
             {
-                Warn($"{MethodBase.GetCurrentMethod().DeclaringType.Name}:");
+                Utils.Warn($"{MethodBase.GetCurrentMethod().DeclaringType.Name}:");
                 Utils.PrintException(e);
             }
             return true;
@@ -835,13 +850,18 @@ namespace Reshelves2
         [HarmonyPrefix]
         public static bool SendMixingOperationPrefix(MixingStation __instance, MixOperation operation)
         {
+            if (!InstanceFinder.IsServer)
+            {
+                return true;
+            }
+
             try
             {
                 if (!Manager.isInitialized)
                 {
                     return true;
                 }
-                if (!MelonPreferences.GetCategory("Reshelves2").GetEntry<bool>("enableMixingStations").Value)
+                if (!Manager.melonPrefs.GetEntry<bool>("enableMixingStations").Value)
                 {
                     return true;
                 }
@@ -849,7 +869,7 @@ namespace Reshelves2
                 {
                     return true;
                 }
-                if (MelonPreferences.GetCategory("Reshelves2").GetEntry<bool>("playerRestockStations").Value || __instance.PlayerUserObject == null)
+                if (Manager.melonPrefs.GetEntry<bool>("playerRestockStations").Value || __instance.PlayerUserObject == null)
                 {
                     StorableItemInstance newItem = new StorableItemInstance(Il2CppScheduleOne.Registry.GetItem(operation.IngredientID), 1);
                     Manager.TryReshelving(__instance.MixerSlot, newItem, newItem.StackLimit);
@@ -857,7 +877,7 @@ namespace Reshelves2
             }
             catch (Exception e)
             {
-                Warn($"{MethodBase.GetCurrentMethod().DeclaringType.Name}:");
+                Utils.Warn($"{MethodBase.GetCurrentMethod().DeclaringType.Name}:");
                 Utils.PrintException(e);
             }
             return true;
@@ -871,13 +891,18 @@ namespace Reshelves2
         [HarmonyPrefix]
         public static bool PackSingleInstancePrefix(PackagingStation __instance)
         {
+            if (!InstanceFinder.IsServer)
+            {
+                return true;
+            }
+
             try
             {
                 if (!Manager.isInitialized)
                 {
                     return true;
                 }
-                if (!MelonPreferences.GetCategory("Reshelves2").GetEntry<bool>("enablePackagingStations").Value)
+                if (!Manager.melonPrefs.GetEntry<bool>("enablePackagingStations").Value)
                 {
                     return true;
                 }
@@ -885,7 +910,7 @@ namespace Reshelves2
                 {
                     return true;
                 }
-                if (MelonPreferences.GetCategory("Reshelves2").GetEntry<bool>("playerRestockStations").Value || __instance.PlayerUserObject == null)
+                if (Manager.melonPrefs.GetEntry<bool>("playerRestockStations").Value || __instance.PlayerUserObject == null)
                 {
                     StorableItemInstance newItem = Utils.CastTo<StorableItemInstance>(__instance.PackagingSlot.ItemInstance.GetCopy(1));
                     Manager.TryReshelving(__instance.PackagingSlot, newItem, newItem.StackLimit);
@@ -893,7 +918,7 @@ namespace Reshelves2
             }
             catch (Exception e)
             {
-                Warn($"{MethodBase.GetCurrentMethod().DeclaringType.Name}:");
+                Utils.Warn($"{MethodBase.GetCurrentMethod().DeclaringType.Name}:");
                 Utils.PrintException(e);
             }
             return true;
@@ -940,17 +965,22 @@ namespace Reshelves2
         [HarmonyPrefix]
         public static bool SendCookOperationPrefix(ChemistryStation __instance, ChemistryCookOperation op)
         {
+            if (!InstanceFinder.IsServer)
+            {
+                return true;
+            }
+
             try
             {
                 if (!Manager.isInitialized)
                 {
                     return true;
                 }
-                if (!MelonPreferences.GetCategory("Reshelves2").GetEntry<bool>("enableChemistryStations").Value)
+                if (!Manager.melonPrefs.GetEntry<bool>("enableChemistryStations").Value)
                 {
                     return true;
                 }
-                if (MelonPreferences.GetCategory("Reshelves2").GetEntry<bool>("playerRestockStations").Value ||
+                if (Manager.melonPrefs.GetEntry<bool>("playerRestockStations").Value ||
                     __instance.PlayerUserObject == null)
                 {
                     // this should really be done with a map operation, but il2cpp ienumerable methods only accept intptrs
@@ -1021,7 +1051,7 @@ namespace Reshelves2
 
                         if (validMappings.Count == 0)
                         {
-                            MelonLogger.Msg($"Couldn't restock chemistry station because items do not agree with filters.");
+                            Utils.Log($"Couldn't restock chemistry station because items do not agree with filters.");
                         }
                     }
 
@@ -1067,7 +1097,7 @@ namespace Reshelves2
             }
             catch (Exception e)
             {
-                Warn($"{MethodBase.GetCurrentMethod().DeclaringType.Name}:");
+                Utils.Warn($"{MethodBase.GetCurrentMethod().DeclaringType.Name}:");
                 Utils.PrintException(e);
             }
             return true;
@@ -1082,16 +1112,25 @@ namespace Reshelves2
         [HarmonyPrefix]
         public static void TakeItemPrefix(MoveItemBehaviour __instance)
         {
+            if (!InstanceFinder.IsServer)
+            {
+                return;
+            }
+
             try
             {
+                if (!Manager.isInitialized)
+                {
+                    return;
+                }
                 if (__instance.GetAmountToGrab() > 0)
                 {
                     ItemSlot slot = __instance.assignedRoute.Source.GetFirstSlotContainingTemplateItem(__instance.itemToRetrieveTemplate, ITransitEntity.ESlotType.Both);
                     if (slot.SlotOwner != null && Utils.IsObjectStorageRack(slot.SlotOwner.Pointer))
                     {
-                        if (!Mod.shelfAccessors.TryAdd(slot, __instance.Npc))
+                        if (!Manager.shelfAccessors.TryAdd(slot, __instance.Npc))
                         {
-                            MelonLogger.Msg($"ItemSlot {slot.SlotIndex} is already in list of shelfAccessors?");
+                            Utils.Log($"ItemSlot {slot.SlotIndex} is already in list of shelfAccessors?");
                         }
                     }
                 }
@@ -1106,10 +1145,20 @@ namespace Reshelves2
         [HarmonyPostfix]
         public static void TakeItemPostfix(MoveItemBehaviour __instance)
         {
+            if (!InstanceFinder.IsServer)
+            {
+                return;
+            }
+
+            if (!Manager.isInitialized)
+            {
+                return;
+            }
+
             ItemSlot slot = __instance.assignedRoute.Source.GetFirstSlotContainingTemplateItem(__instance.itemToRetrieveTemplate, ITransitEntity.ESlotType.Both);
             if (slot != null)
             {
-                Mod.shelfAccessors.Remove(slot);
+                Manager.shelfAccessors.Remove(slot);
             }
         }
 
@@ -1117,6 +1166,11 @@ namespace Reshelves2
         [HarmonyPrefix]
         public static bool SetStoredInstancePrefix(StorageEntity __instance, int itemSlotIndex, ItemInstance instance)
         {
+            if (!InstanceFinder.IsServer)
+            {
+                return true;
+            }
+
             ItemSlot slot = null;
             try
             {
@@ -1124,7 +1178,7 @@ namespace Reshelves2
                 {
                     return true;
                 }
-                if (!MelonPreferences.GetCategory("Reshelves2").GetEntry<bool>("enableStorage").Value)
+                if (!Manager.melonPrefs.GetEntry<bool>("enableStorage").Value)
                 {
                     return true;
                 }
@@ -1141,7 +1195,7 @@ namespace Reshelves2
                 if (__instance.CurrentAccessor != null)
                 {
                     // is the current slot being accessed by an NPC?
-                    if (!Mod.shelfAccessors.ContainsKey(slot))
+                    if (!Manager.shelfAccessors.ContainsKey(slot))
                     {
                         return true;
                     }
@@ -1151,7 +1205,7 @@ namespace Reshelves2
             }
             catch (Exception e)
             {
-                Warn($"{MethodBase.GetCurrentMethod().DeclaringType.Name}:");
+                Utils.Warn($"{MethodBase.GetCurrentMethod().DeclaringType.Name}:");
                 Utils.PrintException(e);
             }
             return true;
