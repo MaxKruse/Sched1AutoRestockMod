@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36518.9 d17.14
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Reshelves2", "Reshelves2\Reshelves2.csproj", "{F75D4C2E-13B1-454A-A331-F07D2EBFCCA6}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		IL2CPP|Any CPU = IL2CPP|Any CPU
+		Mono|Any CPU = Mono|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{F75D4C2E-13B1-454A-A331-F07D2EBFCCA6}.IL2CPP|Any CPU.ActiveCfg = IL2CPP|Any CPU
+		{F75D4C2E-13B1-454A-A331-F07D2EBFCCA6}.IL2CPP|Any CPU.Build.0 = IL2CPP|Any CPU
+		{F75D4C2E-13B1-454A-A331-F07D2EBFCCA6}.Mono|Any CPU.ActiveCfg = Mono|Any CPU
+		{F75D4C2E-13B1-454A-A331-F07D2EBFCCA6}.Mono|Any CPU.Build.0 = Mono|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {60E329F3-A051-4099-8DFC-352583B82542}
+	EndGlobalSection
+EndGlobal
