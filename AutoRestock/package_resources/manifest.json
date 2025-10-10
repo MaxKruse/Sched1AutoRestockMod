@@ -1,8 +1,8 @@
 {
-    "name": "LateShift%%ARCH%%",
+    "name": "AutoRestock%%ARCH%%",
     "version_number": "%%VERSION%%",
-    "website_url": "https://github.com/lasersquid/Sched1LateShiftMod",
-    "description": "Allows employees to work past 4AM and without an assigned bed or locker. Autopay employees and configure whether pay is deducted from cash or your bank account.",
+    "website_url": "https://github.com/lasersquid/Sched1AutoRestockMod",
+    "description": "If you're tired of spending all your time restocking shelves and stations, this mod will automatically restock empty slots for you and charge your cash balance or bank account. Configurable through any mod management mod (phone app, etc).",
     "dependencies": [
 	"LavaGang-MelonLoader-0.7.0"
     ]

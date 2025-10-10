@@ -1,16 +1,11 @@
-# LateShift
+# AutoRestock
 
-Allows employees to work past 4AM and without an assigned bed or locker. Autopay employees and configure whether pay is deducted from cash or your bank account.
+If you're tired of spending all your time restocking shelves and stations, this mod will automatically restock empty slots and charge your cash balance or bank account. A spiritual successor to Reshelves (RIP). Configurable through any mod management mod. 
 
 
 ## Configuration
 
-The configuration file is LateShiftSettings.json, and is generated in Schedule I's UserData directory when the mod is run for the first time. It can easily be edited by hand with any text editor (eg, Notepad). The default mod configuration is to allow employees to work past 4AM, and to withdraw employee pay from cash.
-
-
-## Compatibility
-
-This mod is not compatible with other mods that affect employee working hours or autopay.
+Configurable through any mod management mod (phone apps, etc). Or, you can edit AutoRestock.cfg in Schedule I's UserData directory with any text editor (eg, Notepad).
 
 
 ## Source
