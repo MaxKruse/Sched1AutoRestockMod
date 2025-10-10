@@ -82,12 +82,13 @@ namespace AutoRestock
 //  - property detection isn't working - done
 //  - receipt is mostly empty - done
 //  - move utils to utils class - done
-//  - rename project
-//  - make icon
-//  - write readme
+//  - rename project - done
+//  - write readme - done
 //  - any transactions mid-completion during save should be stored in MelonPreferences - done
 //  - deserialize transactions and complete on load - done
 //  - initialize manager after all objects in the scene are initialized - done
 //  - convert for mono release - done
 //  - don't initialize/silence warnings for non-host multiplayer - needs testing
-//  - deserialize properly under mono
+//  - deserialize properly under mono - done
+//  - restock quality items properly in mono - done
+//  - make icon

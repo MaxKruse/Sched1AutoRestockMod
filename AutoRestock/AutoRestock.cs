@@ -179,7 +179,7 @@ namespace AutoRestock
         public static bool IsQualityIngredient(string itemID)
         {
             List<string> qualityIngredients = ["pseudo"];
-            return qualityIngredients.Contains(itemID);
+            return qualityIngredients.Aggregate<string, bool>(false, (bool accum, string name) => accum || itemID.Contains(name));
         }
 
         public static ItemDefinition GetItemDef(string itemID)
@@ -218,7 +218,8 @@ namespace AutoRestock
             }
             else
             {
-                qualityItemID = itemID;
+                Utils.Warn($"itemid {itemID} is not a quality ingredient?");
+                return null;
             }
             return new QualityItemInstance(GetItemDef(qualityItemID), 1, quality);
         }
@@ -428,11 +429,6 @@ namespace AutoRestock
 
         public static void Initialize()
         {
-            if (!InstanceFinder.IsServer)
-            {
-                return;
-            }
-
             try
             {
                 melonPrefs = MelonPreferences.GetCategory("AutoRestock");
@@ -541,7 +537,6 @@ namespace AutoRestock
             return false;
         }
 
-
         public static void TryReshelving(ItemSlot slot, StorableItemInstance item, int quantity)
         {
             if (isInitialized)
@@ -589,6 +584,7 @@ namespace AutoRestock
             {
                 Utils.Log($"Tried to restock item, but Manager was not initialized!");
             }
+
         }
 
 #if MONO_BUILD
@@ -653,7 +649,7 @@ namespace AutoRestock
         }
 #endif
 
-        private static IEnumerator ReshelveCoroutine(ItemSlot slot, ItemInstance item, NetworkObject lockOwner, Transaction transaction)
+        private static IEnumerator ReshelveCoroutine(ItemSlot slot, StorableItemInstance item, NetworkObject lockOwner, Transaction transaction)
         {
             slot.SetIsRemovalLocked(true);
             yield return new WaitForSeconds(2f);
@@ -666,7 +662,7 @@ namespace AutoRestock
             if (transaction.quantity > 0)
             {
                 item.SetQuantity(transaction.quantity - slot.Quantity);
-                slot.InsertItem(item);
+                slot.AddItem(item);
             }
             slot.SetIsRemovalLocked(false);
 
@@ -693,14 +689,11 @@ namespace AutoRestock
 
         private static void OnDayPass()
         {
-            if (isInitialized)
+            if (isInitialized && InstanceFinder.IsServer)
             {
-                if (InstanceFinder.IsServer)
-                {
-                    NetworkSingleton<MessagingManager>.Instance.SendMessage(new Message(GetReceipt(), Message.ESenderType.Other, true, -1), true, "oscar_holland");
-                    ledger.Clear();
-                    ledgerDay = timeManager.CurrentDay;
-                }
+                NetworkSingleton<MessagingManager>.Instance.SendMessage(new Message(GetReceipt(), Message.ESenderType.Other, true, -1), true, "oscar_holland");
+                ledger.Clear();
+                ledgerDay = timeManager.CurrentDay;
             }
         }
 
@@ -1103,15 +1096,14 @@ namespace AutoRestock
                         if (slot.ItemInstance == null && missingIngredients.Count > 0)
                         {
                             ItemDefinition newDef = validMappings[0][emptySlotsFilled];
-                            StorableItemInstance newItem;
-                            if (Utils.IsQualityIngredient(newDef.Name))
+                            if (Utils.IsQualityIngredient(newDef.ID))
                             {
-                                newItem = Utils.GetItemInstance(newDef.ID, op.ProductQuality);
+                                QualityItemInstance newItem = Utils.GetItemInstance(newDef.ID, op.ProductQuality);
                                 Manager.TryReshelving(slot, newItem, newItem.StackLimit);
                             }
                             else
                             {
-                                newItem = Utils.GetItemInstance(newDef.ID);
+                                StorableItemInstance newItem = Utils.GetItemInstance(newDef.ID);
                                 Manager.TryReshelving(slot, newItem, newItem.StackLimit);
                             }
                             emptySlotsFilled++;
