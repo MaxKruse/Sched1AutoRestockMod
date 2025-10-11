@@ -246,19 +246,6 @@ namespace AutoRestock
             return stations.Aggregate<string, bool>(false, (bool accum, string name) => accum || objName.Contains(name));
 
         }
-
-        public static bool IsObjectBuildableItem(string objName)
-        {
-            List<string> stations = ["PackagingStation", "PackagingStationMk2", "Cauldron", "ChemistryStation", "MixingStation", "MixingStationMk2"];
-            return stations.Aggregate<string, bool>(false, (bool accum, string name) => accum || objName.Contains(name));
-
-        }
-
-        public static bool IsObjectStorageRack(string objName)
-        {
-            List<string> shelves = ["Safe", "Small Storage Rack", "Medium Storage Rack", "Large Storage Rack", "StorageRack"];
-            return shelves.Aggregate<string, bool>(false, (bool accum, string name) => accum || objName.Contains(name));
-        }
     }
 
     public static class Manager
@@ -652,7 +639,7 @@ namespace AutoRestock
         private static IEnumerator ReshelveCoroutine(ItemSlot slot, StorableItemInstance item, NetworkObject lockOwner, Transaction transaction)
         {
             slot.SetIsRemovalLocked(true);
-            yield return new WaitForSeconds(2f);
+            yield return new WaitForSeconds(1f);
 
             bool isVerbose = melonPrefs.GetEntry<bool>("verboseLogs").Value;
             if (isVerbose)
@@ -1161,7 +1148,7 @@ namespace AutoRestock
                     {
                         if (!Manager.shelfAccessors.TryAdd(slot, __instance.Npc))
                         {
-                            Utils.Log($"ItemSlot is already in list of shelfAccessors?");
+                            Utils.Warn($"ItemSlot is already in list of shelfAccessors?");
                         }
                     }
                 }
